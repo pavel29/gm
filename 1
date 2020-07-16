@@ -1,0 +1,292 @@
+import pygame
+import random
+import time
+from os import path
+import sys
+
+
+fps = 30
+HEIGHT = 420
+WIDTH = 720
+x = WIDTH/2
+y = HEIGHT/2
+score = 0
+topscore = 0
+
+img_dir = path.join(path.dirname(__file__), 'img')
+snd_dir = path.join(path.dirname(__file__), 'snd')
+
+RIGHT = "R"
+LEFT = "L"
+UP = "U"
+DOWN = "D"
+MOVE = (UP, LEFT, RIGHT, DOWN)
+
+pygame.init()
+win = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.Surface((WIDTH, HEIGHT))
+pygame.display.set_caption("ssssss")
+clock = pygame.time.Clock()
+font_name = pygame.font.match_font('BlambotFXProBB-Heavy')
+run = True
+gameOver = False
+
+# Загрузка всей игровой графики
+background = pygame.image.load(path.join(img_dir, 'background.png')).convert()
+background_rect = background.get_rect()
+background = pygame.transform.scale(background, (WIDTH, HEIGHT))
+player_img = pygame.image.load(path.join(img_dir, 'zl.png')).convert()
+enemy_img = pygame.image.load(path.join(img_dir, 'enemy.png')).convert()
+baf_img = pygame.image.load(path.join(img_dir, 'baf.png')).convert()
+death_img = pygame.image.load(path.join(img_dir, 'death.png')).convert()
+heart_img = pygame.image.load(path.join(img_dir, 'heart.png')).convert()
+
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = player_img
+        self.image = pygame.transform.scale(self.image, (45, 45))
+        self.image.set_colorkey((255,255,255))
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH // 2, HEIGHT // 2)
+        self.speed = 8
+        self.shield = 120
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            self.rect.x -= self.speed
+        if keys[pygame.K_d]:
+            self.rect.x += self.speed
+        if keys[pygame.K_w]:
+            self.rect.y -= self.speed
+        if keys[pygame.K_s]:
+            self.rect.y += self.speed
+
+
+
+class Mob(pygame.sprite.Sprite):
+    def __init__(self, img, w, h,color):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.image = pygame.transform.scale(img, (w, h))
+        self.image.set_colorkey(color)
+        self.rect = self.image.get_rect()
+        self.speedy = random.randrange(1, 8)
+        self.speedx = random.randrange(1, 8)
+        self.motion = random.choice(MOVE)
+        if self.motion == UP:
+            self.rect.x = random.randrange(WIDTH - self.rect.width)
+            self.rect.y = random.randrange(-100, -40)
+        if self.motion == DOWN:
+            self.rect.x = random.randrange(WIDTH - self.rect.width)
+            self.rect.y = random.randrange(-100, -40)
+        if self.motion == RIGHT:
+            self.rect.x = random.randrange(-100, -40)
+            self.rect.y = random.randrange(HEIGHT - self.rect.height)
+        if self.motion == LEFT:
+            self.rect.x = random.randrange(-100, -40)
+            self.rect.y = random.randrange(HEIGHT - self.rect.height)
+
+    def update(self):
+        if self.motion == UP:
+            self.rect.y += self.speedy
+            if self.rect.top > HEIGHT + 10:
+                self.rect.x = random.randrange(WIDTH - self.rect.width)
+                self.rect.y = random.randrange(-100, -40)
+                self.speedy = random.randrange(1, 5)
+        if self.motion == DOWN:
+            self.rect.y -= self.speedy
+            if self.rect.bottom < 10:
+                self.rect.x = random.randrange(WIDTH - self.rect.width)
+                self.rect.y = random.randrange(HEIGHT, HEIGHT + 10)
+                self.speedy = random.randrange(1, 5)
+        if self.motion == RIGHT:
+            self.rect.x -= self.speedx
+            if self.rect.right < 10:
+                self.rect.x = random.randrange(WIDTH, WIDTH + 50)
+                self.rect.y = random.randrange(HEIGHT - self.rect.height)
+                self.speedx = random.randrange(1, 5)
+        if self.motion == LEFT:
+            self.rect.x += self.speedx
+            if self.rect.left > WIDTH + 10:
+                self.rect.x = random.randrange(-100, -40)
+                self.rect.y = random.randrange(HEIGHT - self.rect.height)
+                self.speedx = random.randrange(1, 5)
+
+class enemy(Mob):
+    def __init__(self, img, w, h, color):
+        super().__init__(img, w, h, color)
+
+
+class Baf(Mob):
+    def __init__(self, img, w, h, color):
+        super().__init__(img, w, h, color)
+
+
+class Death(Mob):
+    def __init__(self, img, w, h, color):
+        super().__init__(img, w, h, color)
+
+
+class Health(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = heart_img
+        self.image = pygame.transform.scale(heart_img, (40, 40))
+        self.image.set_colorkey((255, 255, 255))
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randrange(40, 680)
+        self.rect.y = random.randrange(40, 440)
+
+
+
+
+all_sprites = pygame.sprite.Group()
+player = Player()
+health2 = pygame.sprite.Group()
+enemas = pygame.sprite.Group()
+bafs = pygame.sprite.Group()
+deaths = pygame.sprite.Group()
+all_sprites.add(player)
+
+
+def APPEARANCES():
+    for i in range(12):
+        enm = enemy(enemy_img, 50, 50, (255, 255, 255))
+        all_sprites.add(enm)
+        enemas.add(enm)
+
+    for i in range(3):
+        baf = enemy(baf_img, 45, 45, (255, 255, 255))
+        all_sprites.add(baf)
+        bafs.add(baf)
+
+    death = enemy(death_img, 50, 50, (255, 255, 255))
+    all_sprites.add(death)
+    deaths.add(death)
+
+
+APPEARANCES()
+
+
+# SCORE
+def draw_text(surf, text, size, x, y):
+    font = pygame.font.Font(font_name, size)
+    text_surface = font.render(text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
+
+
+# HP
+def draw_shield_bar(surf, x, y, pct):
+    if pct < 0:
+        pct = 0
+    BAR_LENGTH = 120
+    BAR_HEIGHT = 10
+    fill = (pct / 120) * BAR_LENGTH
+    outline_rect = pygame.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
+    fill_rect = pygame.Rect(x, y, fill, BAR_HEIGHT)
+    pygame.draw.rect(surf, (0, 255, 0), fill_rect)
+    pygame.draw.rect(surf, (255, 0, 0), outline_rect, 2)
+
+def show_go_screen():
+    win.blit(background, background_rect)
+    draw_text(win, "SHMUP!", 64, WIDTH / 2, HEIGHT / 4)
+    draw_text(win, "Arrow keys move, Space to fire", 22,
+              WIDTH // 2, HEIGHT // 2)
+    draw_text(win, 'Top score ' + str(topscore), 30, WIDTH - 120, 10)
+    draw_text(win, "Press a key to begin", 18, WIDTH // 2, HEIGHT * 3 / 4)
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        clock.tick(fps)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame.KEYUP:
+                waiting = False
+
+show_go_screen()
+coin = pygame.mixer.Sound(path.join(snd_dir, 'coin.wav'))
+attack = pygame.mixer.Sound(path.join(snd_dir, 'attack.wav'))
+pygame.mixer.music.load(path.join(snd_dir, 'fon1.wav'))
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(loops=-1)
+
+while run:
+    if gameOver:
+        show_go_screen()
+        gameOver = False
+        all_sprites = pygame.sprite.Group()
+        player = Player()
+        enemas = pygame.sprite.Group()
+        bafs = pygame.sprite.Group()
+        deaths = pygame.sprite.Group()
+        all_sprites.add(player)
+        APPEARANCES()
+        score = 0
+
+    clock.tick(fps)
+    pygame.time.delay(fps)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            exit()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                show_go_screen()
+
+    all_sprites.update()
+    # REACTION
+    hits = pygame.sprite.spritecollide(player, enemas, True)
+    for hit in hits:
+        attack.play()
+        enm = enemy(enemy_img, 50, 50, (255, 255, 255))
+        all_sprites.add(enm)
+        enemas.add(enm)
+        player.shield -= 40
+
+    hit1 = pygame.sprite.spritecollide(player, bafs, True)
+    for hit in hit1:
+        score += 5
+        coin.play()
+        baf = Baf(baf_img, 45, 45, (255, 255, 255))
+        all_sprites.add(baf)
+        bafs.add(baf)
+
+    hit2 = pygame.sprite.spritecollide(player, deaths, True)
+    for hit in hit2:
+        player.shield = 0
+
+    hit3 = pygame.sprite.spritecollide(player, health2, True)
+    for hit in hit3:
+        if player.shield == 120:
+            player.shield = 120
+        else:
+            player.shield += 40
+
+    if not score == 0 and score % 50 == 0:
+        health = Health()
+        all_sprites.add(health)
+        health2.add(health)
+        score += 10
+
+    if player.shield == 0:
+        gameOver = True
+
+    if score >topscore:
+        topscore = score
+
+    # RENDER
+    win.fill((255, 255, 255))
+    win.blit(background, background_rect)
+    all_sprites.draw(win)
+    draw_text(win, str(score), 50, WIDTH//2, 10)
+    draw_text(win, 'Top score ' + str(topscore), 30, WIDTH - 120, 10)
+    draw_shield_bar(win, 5, 5, player.shield)
+    pygame.display.flip()
+
+pygame.quit()
